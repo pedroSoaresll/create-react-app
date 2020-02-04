@@ -1,196 +1,13 @@
-This is a CRA fork that I use for my projects. You can use it, too.
-
-However, I strongly recommend using the official CRA and contributing to help improve the official CRA.
-
-# CRA WITH SAUCE
-
-Add some SAUCEsomeness to your CRAwesomeness, supporting:
-
-- Monorepos -- transpile other packages in your monorepo
-- App variants -- react native -like source file overrides by extension, e.g. MyComponent.ios.js, but configurable
-
-See [Additional Features](#additional-features) for more info.
-
-## Disclaimer
-
-It's a much better idea to use the [official CRA](https://github.com/facebook/create-react-app) unless you are extremely adventurous or desperate.
-
-## Goals
-
-- Trail official CRA releases
-- Add useful features that aren't yet supported by official CRA
-- Transition to official CRA features as they become available
-- Die when official CRA supports all features
-
-## Getting Started
-
-- `yarn remove react-scripts`, then `yarn add @bradfordlemley/react-scripts --exact`
-- `@bradfordlemley/react-scripts` uses the same versioning as `react-scripts`, except that the patch version is x100, e.g., `@bradfordlemley/react-scripts@2.0.401` is based on `react-scripts@2.0.4` (This allows several versions based on a single `react-scripts` release, but means `@bradfordlemley\react-scripts` itself is not semantically versioned so you should pin the exact version.)
-
-## Additional Features
-
-### Monorepo / Source Code Sharing
-
-- With "monorepo support", other packages in the monorepo can be treated as app sources -- watched, linted, transpiled, and tested in the same way as if they were part of the app itself.
-- This allows you to share components between multiple apps in the monorepo, and also allows the components to be truly modular with their own dependencies, etc.
-- You can share components in a monorepo without integrated "monorepo support" -- each package needs its own build/test/etc scripts. The scripts need to be orchestrated to allow everything to be developed in parallel and the result can be a cumbersome development experience compared to integrated "monorepo support".
-- "monorepo support" was included in some CRA 2 alpha releases, but was reverted for the official CRA 2.0 release. CRA is currently recommending using [nwb](https://github.com/insin/nwb) to support component packages in the monorepo.
-
-A typical monorepo folder structure looks like this:
-
-```
-monorepo/
-  apps/
-    app1/ ... import Comp1 from 'comp1'
-    app2/ ... import Comp1 from 'comp1'
-  comps/
-    comp1/
-    ...
-```
-
-#### How to Set Up a Monorepo
-
-Below expands on the monorepo structure above, adding the package.json files required to configure the monorepo for [yarn workspaces](https://yarnpkg.com/en/docs/workspaces).
-
-```
-monorepo/
-  package.json:
-    "workspaces": ["apps/*", "comps/*"],
-    "private": true
-  apps/
-    app1/
-      package.json:
-        "dependencies": {
-          "@myorg/comp1": ">=0.0.0",
-          "react": "^16.2.0"
-        },
-        "devDependencies": {
-          "@bradfordlemley/react-scripts": "2.0.402"
-        },
-        "sourceWorkspaces" : [
-          "comps/*"
-        ]
-      src/
-        app.js: import Comp1 from '@myorg/comp1';
-    app2/
-      package.json:
-        "dependencies": {
-          "@myorg/comp1": ">=0.0.0",
-          "@myorg/tscomp1": ">=0.0.0",
-          "react": "^16.2.0"
-        },
-        "devDependencies": {
-          "@bradfordlemley/react-scripts": "2.0.402"
-        },
-        "sourceWorkspaces" : [
-          "comps/*"
-        ]
-      tsconfig.json:
-        "include": [
-          "src",
-          "../../comps/**/*"
-        ]
-      src/
-        app.js: import Comp1 from '@myorg/comp1';
-  comps/
-    comp1/
-      package.json:
-        "name": "@myorg/comp1",
-        "version": "0.1.0"
-      index.js
-    comp2/
-      package.json:
-        "name": "@myorg/comp2",
-        "version": "0.1.0",
-        "dependencies": ["@myorg/comp1": ">=0.0.0"],
-        "devDependencies": ["react": "^16.2.0"]
-      index.js: import Comp1 from '@myorg/comp1';
-    tscomp1/
-      package.json:
-        "name": "@myorg/tscomp1",
-        "version": "0.1.0",
-        "devDependencies": ["react": "^16.2.0"]
-      index.tsx: ...
-```
-
-- The "workspaces" entry in the top-level package.json is an array of glob patterns specifying where shared packages are located in the monorepo.
-- The "sourceWorkspaces" entry in an app's package.json is array of glob patterns similar to "workspaces", but specifying which packages in the monorepo should be treated as source.
-- The scoping prefixes, e.g. @myorg/, are not required, but are recommended, allowing you to differentiate your packages from others of the same name. See [scoped packages](https://docs.npmjs.com/misc/scope) for more info.
-- Using a package in the monorepo is accomplished in the same manner as a published npm package, by specifying the shared package as dependency.
-- In order to pick up the monorepo version of a package, the specified dependency version must semantically match the package version in the monorepo. See [semver](https://docs.npmjs.com/misc/semver) for info on semantic version matching.
-
-#### Typescript
-
-For typescript components, the shared components' paths must be included via tsconfig.json's `include`, see example above.
-
-`Type error: Could not find a declaration file for module ... TS7016` is the error that indicates shared components are not properly included in tsconfig.json.
-
-#### Lerna and Publishing
-
-[Lerna](https://github.com/lerna/lerna) is a popular tool for managing monorepos. Lerna can be configured to use yarn workspaces, so it will work with the monorepo structure above. It's important to note that while lerna helps publish various packages in a monorepo, react-scripts does nothing to help publish a component to npm. A component which uses JSX or ES6+ features would need to be built by another tool before it can be published to npm. See [publishing components to npm](#publishing-components-to-npm) for more info.
-
-### App Variants
-
-This feature can be used for producing slight differences in an app, e.g. to support an admin variant of the app or a hybrid version of the app.
-
-```
-app/
-  package.json:
-    "devDependencies": {
-      "@bradfordlemley/react-scripts": "2.0.402"
-    },
-    "targets": {
-      "ios": {   <-- configure ios variant
-        "jsExts": [
-          ".ios.js",
-          ".cor.js"
-        ],
-        "appHtml": "index.cor.html"
-      },
-      "android": {  <-- configure android variant
-        "jsExts": [
-          ".android.js",
-          ".cor.js"
-        ],
-        "appHtml": "index.cor.html"
-      },
-    },
-    "scripts": {
-      "build": "react-scripts build", // standard build
-      "build:android": "TARGET=android react-scripts build",  // build android
-      "build:ios": "TARGET=ios react-scripts build" // build ios
-    }
-  src/
-    App.js
-      import comp1 from './comp1';
-      import comp2 from './comp2';
-    comp1.js  // standard build
-    comp1.android.js // used for TARGET=android build
-    comp1.ios.js     // used for TARGET=ios build
-    comp2.js         // used for standard build
-    comp2.cor.js     // used for both ios and android builds
-  public/
-    index.html // standard build
-    index.cor.html // used for both ios and android builds
-  build/ // build output for standard build
-  build_android/  // build output for TARGET=android
-  build_ios/  // build output for TARGET=ios
-```
-
-#### Other Forks and Extensions
-
-- [custom-react-scripts](https://github.com/kitze/custom-react-scripts)
-- [react-app-rewire-babel-loader](https://github.com/dashed/react-app-rewire-babel-loader)
-
-# Create React App [![Build Status](https://travis-ci.org/facebook/create-react-app.svg?branch=master)](https://travis-ci.org/facebook/create-react-app)
+# Create React App [![Build Status](https://dev.azure.com/facebook/create-react-app/_apis/build/status/facebook.create-react-app?branchName=master)](https://dev.azure.com/facebook/create-react-app/_build/latest?definitionId=1&branchName=master) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green.svg)](https://github.com/facebook/create-react-app/blob/master/CONTRIBUTING.md)
 
 Create React apps with no build configuration.
 
 - [Creating an App](#creating-an-app) – How to create a new app.
-- [User Guide](https://facebook.github.io/create-react-app/docs/folder-structure) – How to develop apps bootstrapped with Create React App.
+- [User Guide](https://facebook.github.io/create-react-app/) – How to develop apps bootstrapped with Create React App.
 
 Create React App works on macOS, Windows, and Linux.<br>
-If something doesn’t work, please [file an issue](https://github.com/facebook/create-react-app/issues/new).
+If something doesn’t work, please [file an issue](https://github.com/facebook/create-react-app/issues/new).<br>
+If you have questions or need help, please ask in our [Spectrum](https://spectrum.chat/create-react-app) community.
 
 ## Quick Overview
 
@@ -200,13 +17,15 @@ cd my-app
 npm start
 ```
 
+If you've previously installed `create-react-app` globally via `npm install -g create-react-app`, we recommend you uninstall the package using `npm uninstall -g create-react-app` to ensure that npx always uses the latest version.
+
 _([npx](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b) comes with npm 5.2+ and higher, see [instructions for older npm versions](https://gist.github.com/gaearon/4064d3c23a77c74a3614c498a8bb1c5f))_
 
 Then open [http://localhost:3000/](http://localhost:3000/) to see your app.<br>
 When you’re ready to deploy to production, create a minified bundle with `npm run build`.
 
 <p align='center'>
-<img src='https://cdn.rawgit.com/facebook/create-react-app/27b42ac/screencast.svg' width='600' alt='npm start'>
+<img src='https://cdn.jsdelivr.net/gh/facebook/create-react-app@27b42ac7efa018f2541153ab30d63180f5fa39e0/screencast.svg' width='600' alt='npm start'>
 </p>
 
 ### Get Started Immediately
@@ -214,11 +33,11 @@ When you’re ready to deploy to production, create a minified bundle with `npm 
 You **don’t** need to install or configure tools like Webpack or Babel.<br>
 They are preconfigured and hidden so that you can focus on the code.
 
-Just create a project, and you’re good to go.
+Create a project, and you’re good to go.
 
 ## Creating an App
 
-**You’ll need to have Node 8.10.0 or later on your local development machine** (but it’s not required on the server). You can use [nvm](https://github.com/creationix/nvm#installation) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows#node-version-manager-nvm-for-windows) to easily switch Node versions between different projects.
+**You’ll need to have Node 8.16.0 or Node 10.16.0 or later version on your local development machine** (but it’s not required on the server). You can use [nvm](https://github.com/creationix/nvm#installation) (macOS/Linux) or [nvm-windows](https://github.com/coreybutler/nvm-windows#node-version-manager-nvm-for-windows) to switch Node versions between different projects.
 
 To create a new app, you may choose one of the following methods:
 
@@ -228,7 +47,7 @@ To create a new app, you may choose one of the following methods:
 npx create-react-app my-app
 ```
 
-_([npx](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b) comes with npm 5.2+ and higher, see [instructions for older npm versions](https://gist.github.com/gaearon/4064d3c23a77c74a3614c498a8bb1c5f))_
+_([npx](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b) is a package runner tool that comes with npm 5.2+ and higher, see [instructions for older npm versions](https://gist.github.com/gaearon/4064d3c23a77c74a3614c498a8bb1c5f))_
 
 ### npm
 
@@ -244,7 +63,7 @@ _`npm init <initializer>` is available in npm 6+_
 yarn create react-app my-app
 ```
 
-_`yarn create` is available in Yarn 0.25+_
+_[`yarn create <starter-kit-package>`](https://yarnpkg.com/lang/en/docs/cli/create/) is available in Yarn 0.25+_
 
 It will create a directory called `my-app` inside the current folder.<br>
 Inside that directory, it will generate the initial project structure and install the transitive dependencies:
@@ -269,7 +88,7 @@ my-app
     └── serviceWorker.js
 ```
 
-No configuration or complicated folder structures, just the files you need to build your app.<br>
+No configuration or complicated folder structures, only the files you need to build your app.<br>
 Once the installation is done, you can open your project folder:
 
 ```sh
@@ -287,7 +106,7 @@ The page will automatically reload if you make changes to the code.<br>
 You will see the build errors and lint warnings in the console.
 
 <p align='center'>
-<img src='https://cdn.rawgit.com/marionebl/create-react-app/9f62826/screencast-error.svg' width='600' alt='Build errors'>
+<img src='https://cdn.jsdelivr.net/gh/marionebl/create-react-app@9f6282671c54f0874afd37a72f6689727b562498/screencast-error.svg' width='600' alt='Build errors'>
 </p>
 
 ### `npm test` or `yarn test`
@@ -295,7 +114,7 @@ You will see the build errors and lint warnings in the console.
 Runs the test watcher in an interactive mode.<br>
 By default, runs tests related to files changed since the last commit.
 
-[Read more about testing.](https://github.com/facebook/create-react-app/blob/master/packages/react-scripts/template/README.md#running-tests)
+[Read more about testing.](https://facebook.github.io/create-react-app/docs/running-tests)
 
 ### `npm run build` or `yarn build`
 
@@ -316,9 +135,9 @@ Please refer to the [User Guide](https://facebook.github.io/create-react-app/doc
 
 ## Philosophy
 
-- **One Dependency:** There is just one build dependency. It uses Webpack, Babel, ESLint, and other amazing projects, but provides a cohesive curated experience on top of them.
+- **One Dependency:** There is only one build dependency. It uses Webpack, Babel, ESLint, and other amazing projects, but provides a cohesive curated experience on top of them.
 
-- **No Configuration Required:** You don't need to configure anything. Reasonably good configuration of both development and production builds is handled for you so you can focus on writing code.
+- **No Configuration Required:** You don't need to configure anything. A reasonably good configuration of both development and production builds is handled for you so you can focus on writing code.
 
 - **No Lock-In:** You can “eject” to a custom setup at any time. Run a single command, and all the configuration and build dependencies will be moved directly into your project, so you can pick up right where you left off.
 
@@ -332,12 +151,12 @@ Your environment will have everything you need to build a modern single-page Rea
 - A fast interactive unit test runner with built-in support for coverage reporting.
 - A live development server that warns about common mistakes.
 - A build script to bundle JS, CSS, and images for production, with hashes and sourcemaps.
-- An offline-first [service worker](https://developers.google.com/web/fundamentals/getting-started/primers/service-workers) and a [web app manifest](https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/), meeting all the [Progressive Web App](https://github.com/facebook/create-react-app/blob/master/packages/react-scripts/template/README.md#making-a-progressive-web-app) criteria. (_Note: Using the service worker is opt-in as of `react-scripts@2.0.0` and higher_)
+- An offline-first [service worker](https://developers.google.com/web/fundamentals/getting-started/primers/service-workers) and a [web app manifest](https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/), meeting all the [Progressive Web App](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app) criteria. (_Note: Using the service worker is opt-in as of `react-scripts@2.0.0` and higher_)
 - Hassle-free updates for the above tools with a single dependency.
 
 Check out [this guide](https://github.com/nitishdayal/cra_closer_look) for an overview of how these tools fit together.
 
-The tradeoff is that **these tools are preconfigured to work in a specific way**. If your project needs more customization, you can ["eject"](https://github.com/facebook/create-react-app/blob/master/packages/react-scripts/template/README.md#npm-run-eject) and customize it, but then you will need to maintain this configuration.
+The tradeoff is that **these tools are preconfigured to work in a specific way**. If your project needs more customization, you can ["eject"](https://facebook.github.io/create-react-app/docs/available-scripts#npm-run-eject) and customize it, but then you will need to maintain this configuration.
 
 ## Popular Alternatives
 
@@ -347,15 +166,15 @@ Create React App is a great fit for:
 - **Starting new single-page React applications.**
 - **Creating examples** with React for your libraries and components.
 
-Here’s a few common cases where you might want to try something else:
+Here are a few common cases where you might want to try something else:
 
 - If you want to **try React** without hundreds of transitive build tool dependencies, consider [using a single HTML file or an online sandbox instead](https://reactjs.org/docs/try-react.html).
 
-- If you need to **integrate React code with a server-side template framework** like Rails or Django, or if you’re **not building a single-page app**, consider using [nwb](https://github.com/insin/nwb), or [Neutrino](https://neutrino.js.org/) which are more flexible. For Rails specifically, you can use [Rails Webpacker](https://github.com/rails/webpacker).
+- If you need to **integrate React code with a server-side template framework** like Rails, Django or Symfony, or if you’re **not building a single-page app**, consider using [nwb](https://github.com/insin/nwb), or [Neutrino](https://neutrino.js.org/) which are more flexible. For Rails specifically, you can use [Rails Webpacker](https://github.com/rails/webpacker). For Symfony, try [Symfony's Webpack Encore](https://symfony.com/doc/current/frontend/encore/reactjs.html).
 
 - If you need to **publish a React component**, [nwb](https://github.com/insin/nwb) can [also do this](https://github.com/insin/nwb#react-components-and-libraries), as well as [Neutrino's react-components preset](https://neutrino.js.org/packages/react-components/).
 
-- If you want to do **server rendering** with React and Node.js, check out [Next.js](https://github.com/zeit/next.js/) or [Razzle](https://github.com/jaredpalmer/razzle). Create React App is agnostic of the backend, and just produces static HTML/JS/CSS bundles.
+- If you want to do **server rendering** with React and Node.js, check out [Next.js](https://github.com/zeit/next.js/) or [Razzle](https://github.com/jaredpalmer/razzle). Create React App is agnostic of the backend, and only produces static HTML/JS/CSS bundles.
 
 - If your website is **mostly static** (for example, a portfolio or a blog), consider using [Gatsby](https://www.gatsbyjs.org/) instead. Unlike Create React App, it pre-renders the website into HTML at the build time.
 
@@ -365,14 +184,21 @@ All of the above tools can work with little to no configuration.
 
 If you prefer configuring the build yourself, [follow this guide](https://reactjs.org/docs/add-react-to-an-existing-app.html).
 
+## React Native
+
+Looking for something similar, but for React Native?<br>
+Check out [Expo CLI](https://github.com/expo/expo-cli).
+
 ## Contributing
 
 We'd love to have your helping hand on `create-react-app`! See [CONTRIBUTING.md](CONTRIBUTING.md) for more information on what we're looking for and how to get started.
 
-## React Native
+## Credits
 
-Looking for something similar, but for React Native?<br>
-Check out [Create React Native App](https://github.com/react-community/create-react-native-app/).
+This project exists thanks to all the people who [contribute](CONTRIBUTING.md).<br>
+<a href="https://github.com/facebook/create-react-app/graphs/contributors"><img src="https://opencollective.com/create-react-app/contributors.svg?width=890&button=false" /></a>
+
+Thanks to [Netlify](https://www.netlify.com/) for hosting our documentation.
 
 ## Acknowledgements
 

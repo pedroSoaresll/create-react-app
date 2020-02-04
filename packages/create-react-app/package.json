@@ -1,14 +1,18 @@
 {
-  "name": "@bradfordlemley/create-react-app",
-  "version": "2.1.1",
+  "name": "create-react-app",
+  "version": "3.3.1",
   "keywords": [
     "react"
   ],
   "description": "Create React apps with no build configuration.",
-  "repository": "github:bradfordlemley/create-react-app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/create-react-app.git",
+    "directory": "packages/create-react-app"
+  },
   "license": "MIT",
   "engines": {
-    "node": ">=4"
+    "node": ">=8"
   },
   "bugs": {
     "url": "https://github.com/bradfordlemley/create-react-app/issues"
@@ -22,16 +26,17 @@
     "create-react-app": "./index.js"
   },
   "dependencies": {
-    "chalk": "1.1.3",
-    "commander": "2.18.0",
-    "cross-spawn": "4.0.2",
-    "envinfo": "5.10.0",
-    "fs-extra": "5.0.0",
+    "chalk": "3.0.0",
+    "commander": "4.1.0",
+    "cross-spawn": "7.0.1",
+    "envinfo": "7.5.0",
+    "fs-extra": "8.1.0",
     "hyperquest": "2.1.3",
     "@bradfordlemley/react-dev-utils": "6.0.4",
-    "semver": "5.5.1",
+    "inquirer": "7.0.4",
+    "semver": "6.3.0",
     "tar-pack": "3.4.1",
-    "tmp": "0.0.33",
+    "tmp": "0.1.0",
     "validate-npm-package-name": "3.0.0"
   }
 }

@@ -10,30 +10,14 @@
 
 const path = require('path');
 const fs = require('fs');
-const url = require('url');
 const findMonorepo = require('@bradfordlemley/react-dev-utils/workspaceUtils')
   .findMonorepo;
+const getPublicUrlOrPath = require('react-dev-utils/getPublicUrlOrPath');
 
 // Make sure any symlinks in the project folder are resolved:
 // https://github.com/facebook/create-react-app/issues/637
 const appDirectory = fs.realpathSync(process.cwd());
 const resolveApp = relativePath => path.resolve(appDirectory, relativePath);
-
-const envPublicUrl = process.env.PUBLIC_URL;
-
-function ensureSlash(inputPath, needsSlash) {
-  const hasSlash = inputPath.endsWith('/');
-  if (hasSlash && !needsSlash) {
-    return inputPath.substr(0, inputPath.length - 1);
-  } else if (!hasSlash && needsSlash) {
-    return `${inputPath}/`;
-  } else {
-    return inputPath;
-  }
-}
-
-const getPublicUrl = appPackageJson =>
-  envPublicUrl || require(appPackageJson).homepage;
 
 // We use `PUBLIC_URL` environment variable or "homepage" field to infer
 // "public path" at which the app is served.
@@ -41,12 +25,11 @@ const getPublicUrl = appPackageJson =>
 // single-page apps that may serve index.html for nested URLs like /todos/42.
 // We can't use a relative path in HTML because we don't want to load something
 // like /todos/42/static/js/bundle.7289d.js. We have to know the root.
-function getServedPath(appPackageJson) {
-  const publicUrl = getPublicUrl(appPackageJson);
-  const servedUrl =
-    envPublicUrl || (publicUrl ? url.parse(publicUrl).pathname : '/');
-  return ensureSlash(servedUrl, true);
-}
+const publicUrlOrPath = getPublicUrlOrPath(
+  process.env.NODE_ENV === 'development',
+  require(resolveApp('package.json')).homepage,
+  process.env.PUBLIC_URL
+);
 
 const moduleFileExtensions = [
   'web.mjs',
@@ -121,12 +104,12 @@ module.exports = {
   appSrc: resolveApp('src'),
   jsExts: pathOpts.jsExts,
   appTsConfig: resolveApp('tsconfig.json'),
+  appJsConfig: resolveApp('jsconfig.json'),
   yarnLockFile: resolveApp('yarn.lock'),
   testsSetup: resolveModule(resolveApp, 'src/setupTests'),
   proxySetup: resolveApp('src/setupProxy.js'),
   appNodeModules: resolveApp('node_modules'),
-  publicUrl: getPublicUrl(resolveApp('package.json')),
-  servedPath: getServedPath(resolveApp('package.json')),
+  publicUrlOrPath,
 };
 
 let checkForMonorepo = true;
@@ -146,12 +129,12 @@ module.exports = {
   appSrc: resolveApp('src'),
   jsExts: pathOpts.jsExts,
   appTsConfig: resolveApp('tsconfig.json'),
+  appJsConfig: resolveApp('jsconfig.json'),
   yarnLockFile: resolveApp('yarn.lock'),
   testsSetup: resolveModule(resolveApp, 'src/setupTests'),
   proxySetup: resolveApp('src/setupProxy.js'),
   appNodeModules: resolveApp('node_modules'),
-  publicUrl: getPublicUrl(resolveApp('package.json')),
-  servedPath: getServedPath(resolveApp('package.json')),
+  publicUrlOrPath,
   // These properties only exist before ejecting:
   ownPath: resolveOwn('.'),
   ownNodeModules: resolveOwn('node_modules'), // This is empty on npm 3
@@ -167,26 +150,25 @@ checkForMonorepo = !useTemplate;
 
 if (useTemplate) {
   module.exports = {
-    dotenv: resolveOwn('template/.env'),
+    dotenv: resolveOwn(`${templatePath}/.env`),
     appPath: resolveApp('.'),
-    appBuild: resolveOwn('../../' + pathOpts.appBuild),
-    appPublic: resolveOwn('template/public'),
-    appHtml: resolveOwn('template/public/index.html'),
-    appIndexJs: resolveModule(resolveOwn, 'template/src/index'),
+    appBuild: resolveOwn('../../build'),
+    appPublic: resolveOwn(`${templatePath}/public`),
+    appHtml: resolveOwn(`${templatePath}/public/index.html`),
+    appIndexJs: resolveModule(resolveOwn, `${templatePath}/src/index`),
     appPackageJson: resolveOwn('package.json'),
-    appSrc: resolveOwn('template/src'),
-    jsExts: pathOpts.jsExts,
-    appTsConfig: resolveOwn('template/tsconfig.json'),
-    yarnLockFile: resolveOwn('template/yarn.lock'),
-    testsSetup: resolveModule(resolveOwn, 'template/src/setupTests'),
-    proxySetup: resolveOwn('template/src/setupProxy.js'),
+    appSrc: resolveOwn(`${templatePath}/src`),
+    appTsConfig: resolveOwn(`${templatePath}/tsconfig.json`),
+    appJsConfig: resolveOwn(`${templatePath}/jsconfig.json`),
+    yarnLockFile: resolveOwn(`${templatePath}/yarn.lock`),
+    testsSetup: resolveModule(resolveOwn, `${templatePath}/src/setupTests`),
+    proxySetup: resolveOwn(`${templatePath}/src/setupProxy.js`),
     appNodeModules: resolveOwn('node_modules'),
-    publicUrl: getPublicUrl(resolveOwn('package.json')),
-    servedPath: getServedPath(resolveOwn('package.json')),
+    publicUrlOrPath,
     // These properties only exist before ejecting:
     ownPath: resolveOwn('.'),
     ownNodeModules: resolveOwn('node_modules'),
-    appTypeDeclarations: resolveOwn('template/src/react-app-env.d.ts'),
+    appTypeDeclarations: resolveOwn(`${templatePath}/src/react-app-env.d.ts`),
     ownTypeDeclarations: resolveOwn('lib/react-app.d.ts'),
   };
 }

@@ -8,9 +8,9 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const chalk = require('chalk');
+const chalk = require('react-dev-utils/chalk');
 const paths = require('../../config/paths');
+const modules = require('../../config/modules');
 
 module.exports = (resolve, rootDir, srcRoots) => {
   // Use this instead of `paths.testsSetup` to avoid putting
@@ -28,26 +28,23 @@ module.exports = (resolve, rootDir, srcRoots) => {
     ? toRelRootDir(`src/setupTests.${setupTestsFileExtension}`)
     : undefined;
 
-  // TODO: I don't know if it's safe or not to just use / as path separator
-  // in Jest configs. We need help from somebody with Windows to determine this.
   const config = {
-    collectCoverageFrom: srcRoots
-      .map(root => path.join(toRelRootDir(root), '**/*.{js,jsx,ts,tsx}'))
-      .concat(['!**/build*/**', '!**/coverage*/**', '!**/*.d.ts']),
-    // TODO: this breaks Yarn PnP on eject.
-    // But we can't simply emit this because it'll be an absolute path.
-    // The proper fix is to write jest.config.js on eject instead of a package.json key.
-    // Then these can always stay as require.resolve()s.
-    resolver: require.resolve('jest-pnp-resolver'),
-    setupFiles: [require.resolve('react-app-polyfill/jsdom')],
-    setupTestFrameworkScriptFile: setupTestsFile,
-    testMatch: [
-      '**/__tests__/**/*.{js,jsx,ts,tsx}',
-      '**/?(*.)(spec|test).{js,jsx,ts,tsx}'
+    roots: ['<rootDir>/src'],
+
+    collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}', '!src/**/*.d.ts'],
+
+    setupFiles: [
+      isEjecting
+        ? 'react-app-polyfill/jsdom'
+        : require.resolve('react-app-polyfill/jsdom'),
     ],
-    roots: srcRoots.map(toRelRootDir),
-    testEnvironment: 'jsdom',
-    testURL: 'http://localhost',
+
+    setupFilesAfterEnv: setupTestsFile ? [setupTestsFile] : [],
+    testMatch: [
+      '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
+      '<rootDir>/src/**/*.{spec,test}.{js,jsx,ts,tsx}',
+    ],
+    testEnvironment: 'jest-environment-jsdom-fourteen',
     transform: {
       '^.+\\.(js|jsx|ts|tsx)$': resolve('config/jest/babelTransform.js'),
       '^.+\\.css$': resolve('config/jest/cssTransform.js'),
@@ -59,13 +56,19 @@ module.exports = (resolve, rootDir, srcRoots) => {
       '[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$',
       '^.+\\.module\\.(css|sass|scss)$',
     ],
+    modulePaths: modules.additionalModulePaths || [],
     moduleNameMapper: {
       '^react-native$': 'react-native-web',
       '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
+      ...(modules.jestAliases || {}),
     },
     moduleFileExtensions: [...paths.moduleFileExtensions, 'node'].filter(
       ext => !ext.includes('mjs')
     ),
+    watchPlugins: [
+      'jest-watch-typeahead/filename',
+      'jest-watch-typeahead/testname',
+    ],
   };
   if (rootDir) {
     config.rootDir = rootDir;
@@ -73,33 +76,48 @@ module.exports = (resolve, rootDir, srcRoots) => {
 
   const overrides = Object.assign({}, require(paths.appPackageJson).jest);
   const supportedKeys = [
+    'clearMocks',
     'collectCoverageFrom',
+    'coveragePathIgnorePatterns',
     'coverageReporters',
     'coverageThreshold',
+    'displayName',
+    'extraGlobals',
     'globalSetup',
     'globalTeardown',
+    'moduleNameMapper',
     'resetMocks',
     'resetModules',
+    'restoreMocks',
     'snapshotSerializers',
+    'transform',
+    'transformIgnorePatterns',
     'watchPathIgnorePatterns',
   ];
   if (overrides) {
     supportedKeys.forEach(key => {
-      if (overrides.hasOwnProperty(key)) {
-        config[key] = overrides[key];
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+        if (Array.isArray(config[key]) || typeof config[key] !== 'object') {
+          // for arrays or primitive types, directly override the config key
+          config[key] = overrides[key];
+        } else {
+          // for object types, extend gracefully
+          config[key] = Object.assign({}, config[key], overrides[key]);
+        }
+
         delete overrides[key];
       }
     });
     const unsupportedKeys = Object.keys(overrides);
     if (unsupportedKeys.length) {
       const isOverridingSetupFile =
-        unsupportedKeys.indexOf('setupTestFrameworkScriptFile') > -1;
+        unsupportedKeys.indexOf('setupFilesAfterEnv') > -1;
 
       if (isOverridingSetupFile) {
         console.error(
           chalk.red(
             'We detected ' +
-              chalk.bold('setupTestFrameworkScriptFile') +
+              chalk.bold('setupFilesAfterEnv') +
               ' in your package.json.\n\n' +
               'Remove it from Jest configuration, and put the initialization code in ' +
               chalk.bold('src/setupTests.js') +
